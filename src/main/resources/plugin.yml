@@ -1,0 +1,5 @@
+name: TreasureHunt
+version: '1.0'
+main: gg.kite.TreasureHunt
+api-version: '1.21'
+authors: [KiteGG]

@@ -1,0 +1,55 @@
+# Treasure Hunt Plugin Configuration
+mongodb:
+  connection-string: "mongodb://localhost:27017"
+treasure:
+  max-clue-distance: 100.0 # Maximum distance between clue and treasure
+  clue-difficulty: medium # Options: easy, medium, hard
+  default-rarity: 1 # Default rarity for treasures (1-10, higher is more likely)
+  min-clues-required: 1 # Minimum clues to solve before finding a treasure
+  find-radius: 2.0 # Radius in blocks for detecting treasure finds
+  max-treasures-per-hunt: 5 # Maximum treasures a player can pursue in one hunt
+messages:
+  plugin-enabled: "TreasureHunt plugin enabled!"
+  plugin-disabled: "TreasureHunt plugin disabled!"
+  player-only: "This command can only be used by players!"
+  error: "An error occurred: %s"
+  no-treasures: "No treasures available!"
+  all-treasures-found: "You've found all treasures!"
+  no-clues: "No clues available for this treasure!"
+  no-clue-solved: "You must solve at least %d clue(s) first!"
+  treasure-created: "Treasure '%s' created with rarity %r!"
+  treasure-exists: "Treasure '%s' already exists!"
+  treasure-deleted: "Treasure '%s' deleted!"
+  treasure-not-found: "Treasure '%s' not found!"
+  treasure-list: "Treasures: "
+  invalid-rarity: "Rarity must be a positive integer!"
+  invalid-rarity-format: "Rarity must be a number!"
+  usage-treasure-create: "Usage: /treasure create <name> <rarity>"
+  usage-treasure-delete: "Usage: /treasure delete <name>"
+  clue-created: "Clue created for treasure '%s'!"
+  clue-invalid: "Treasure '%s' not found or clue too far!"
+  clues-deleted: "Clues deleted for treasure '%s'!"
+  clue-list: "Clues for '%s':"
+  clue-solved: "Clue solved for treasure '%s'!"
+  clue-not-found: "Treasure or clue not found for '%s'!"
+  usage-clue-create: "Usage: /clue create <treasure> <description>"
+  usage-clue-delete: "Usage: /clue delete <treasure>"
+  usage-clue-list: "Usage: /clue list <treasure>"
+  usage-clue-solve: "Usage: /clue solve <treasure> <description>"
+  team-created: "Team '%s' created!"
+  team-exists: "Team '%s' already exists!"
+  team-invited: "Invited %s to your team!"
+  team-invite-received: "You have been invited to a team!"
+  team-kicked: "Kicked %s from your team!"
+  team-kick-received: "You have been kicked from the team!"
+  team-not-found: "Team not found!"
+  player-not-found: "Player '%s' not found!"
+  no-teams: "No teams available!"
+  team-list: "Teams:"
+  usage-team-create: "Usage: /team create <name>"
+  usage-team-invite: "Usage: /team invite <player>"
+  usage-team-kick: "Usage: /team kick <player>"
+  hunt-started: "Hunt started! Clue: "
+  usage-hunt-competition: "Usage: /hunt competition start"
+  competition-start: "Treasure hunt competition has started!"
+  competition-end: "Competition ended! Winner: %s"
