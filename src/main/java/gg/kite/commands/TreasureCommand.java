@@ -5,9 +5,9 @@ import gg.kite.managers.Treasure;
 import gg.kite.managers.TreasureManager;
 import org.bukkit.Location;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -16,28 +16,37 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Handles treasure-related commands with tab completion.
+ * Command executor for managing treasures with tab completion support.
  */
-public class TreasureCommand implements CommandExecutor, TabCompleter {
+public class TreasureCommand extends AbstractCommand implements TabExecutor {
     private final TreasureManager treasureManager;
-    private final MessageConfig messageConfig;
 
-    public TreasureCommand(TreasureManager treasureManager, MessageConfig messageConfig) {
+    /**
+     * Constructs a TreasureCommand with the specified dependencies.
+     *
+     * @param treasureManager The treasure manager for treasure operations.
+     * @param messageConfig The message configuration for command messages.
+     */
+    public TreasureCommand(@NotNull TreasureManager treasureManager, @NotNull MessageConfig messageConfig) {
+        super(messageConfig, "treasurehunt.treasure");
         this.treasureManager = treasureManager;
-        this.messageConfig = messageConfig;
     }
 
+    /**
+     * Executes the treasure command with subcommands: create, delete, list.
+     *
+     * @param sender The command sender.
+     * @param command The command instance.
+     * @param label The command label.
+     * @param args The command arguments.
+     * @return True if the command was processed successfully, false otherwise.
+     */
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String @NotNull [] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage(messageConfig.getMessage("player-only"));
-            return true;
-        }
-        if (!player.hasPermission("treasurehunt.treasure")) {
-            player.sendMessage(messageConfig.getMessage("no-permission"));
-            return true;
-        }
-        if (args.length == 0) {
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+        if (!checkSender(sender)) return true;
+        Player player = (Player) sender;
+
+        if (args.length == 1) {
             player.sendMessage(messageConfig.getMessage("usage-treasure-error"));
             return false;
         }
@@ -52,16 +61,25 @@ public class TreasureCommand implements CommandExecutor, TabCompleter {
                     return false;
                 }
             }
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             player.sendMessage(messageConfig.getMessage("error", "%s", e.getMessage()));
         }
         return true;
     }
 
-    private void createTreasure(Player player, String[] args) {
+    /**
+     * Creates a new treasure at the player's location.
+     *
+     * @param player The player executing the command.
+     * @param args The command arguments (expected: create <name> <rarity>).
+     */
+    private void createTreasure(@NotNull Player player, @NotNull String[] args) {
         if (args.length != 3) {
             player.sendMessage(messageConfig.getMessage("usage-treasure-create"));
             return;
+        }
+        if (args[1].length() > 32 || !args[1].matches("[a-zA-Z0-9_-]+")) {
+            throw new IllegalArgumentException("Treasure name must be alphanumeric and up to 32 characters");
         }
         int rarity;
         try {
@@ -79,7 +97,13 @@ public class TreasureCommand implements CommandExecutor, TabCompleter {
                 "%s", args[1], "%r", String.valueOf(rarity)));
     }
 
-    private void deleteTreasure(Player player, String[] args) {
+    /**
+     * Deletes a specified treasure.
+     *
+     * @param player The player executing the command.
+     * @param args The command arguments (expected: delete <name>).
+     */
+    private void deleteTreasure(@NotNull Player player, @NotNull String[] args) {
         if (args.length != 2) {
             player.sendMessage(messageConfig.getMessage("usage-treasure-delete"));
             return;
@@ -88,7 +112,12 @@ public class TreasureCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(messageConfig.getMessage(deleted ? "treasure-deleted" : "treasure-not-found", "%s", args[1]));
     }
 
-    private void listTreasures(Player player) {
+    /**
+     * Lists all available treasures.
+     *
+     * @param player The player executing the command.
+     */
+    private void listTreasures(@NotNull Player player) {
         var treasures = treasureManager.getTreasures();
         if (treasures.isEmpty()) {
             player.sendMessage(messageConfig.getMessage("no-treasures"));
@@ -103,10 +132,18 @@ public class TreasureCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    /**
+     * Provides tab completion suggestions for the treasure command.
+     *
+     * @param sender The command sender.
+     * @param command The command instance.
+     * @param label The command alias.
+     * @param args The command arguments.
+     * @return A list of tab completion suggestions.
+     */
     @Override
-    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String @NotNull [] args) {
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         List<String> completions = new ArrayList<>();
-
         if (args.length == 1) {
             completions.addAll(Arrays.asList("create", "delete", "list"));
         } else if (args.length == 2 && args[0].equalsIgnoreCase("delete")) {
@@ -114,14 +151,12 @@ public class TreasureCommand implements CommandExecutor, TabCompleter {
                     .map(Treasure::getName)
                     .toList());
         }
-
         if (args.length > 0) {
             String lastArg = args[args.length - 1].toLowerCase();
             completions = completions.stream()
                     .filter(s -> s.toLowerCase().startsWith(lastArg))
                     .toList();
         }
-
         return completions;
     }
 }

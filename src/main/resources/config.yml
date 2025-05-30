@@ -1,69 +1,97 @@
-# Treasure Hunt Plugin Configuration
+# MongoDB connection settings
 mongodb:
   connection-string: "mongodb://localhost:27017"
+
+# Treasure hunt gameplay settings
 treasure:
-  max-clue-distance: 100.0 # Maximum distance between clue and treasure
-  clue-difficulty: medium # Options: easy, medium, hard
-  default-rarity: 3
-  min-clues-required: 1 # Minimum clues to solve before finding a treasure
-  find-radius: 2.0 # Maximum distance in blocks for treasure hunting
-  clue-find-radius: 3.0 # Radius for detecting clue auto-detection
-  max-treasures-per-hunt-per: 5
+  max-clue-distance: 100.0       # Maximum distance a clue can be from its treasure
+  clue-difficulty: "medium"      # Default clue difficulty (easy, medium, hard)
+  min-clues-required: 1          # Minimum clues required to find a treasure
+  clue-find-radius: 3.0          # Radius for detecting clues
+  find-radius: 2.0               # Radius for detecting treasures
+  max-treasures-per-hunt: 5      # Maximum treasures a player can hunt at once
+
+# Reward items by rarity level (example placeholder)
+rewards:
+  1:
+    - type: DIAMOND
+      amount: 1
+  2:
+    - type: EMERALD
+      amount: 2
+  3:
+    - type: NETHERITE_INGOT
+      amount: 1
+
+# Messages for commands, listeners, and game events
 messages:
-  player-only: "&cOnly players can use this command!"
-  no-permission: "&cYou don't have permission to use this command!"
-  error: "&cAn error occurred: %s"
-  usage-treasure-error: "&eUsage: /treasure <create|delete|list>"
-  invalid-treasure-command: "&cInvalid subcommand! Use create, delete, or list."
-  usage-treasure-create: "&eUsage: /treasure create <name> <rarity>"
-  invalid-rarity: "&cRarity must be a positive integer!"
-  invalid-rarity-format: "&cRarity must be a number!"
-  treasure-created: "&aTreasure '&6%s&a' created with rarity %r!"
-  treasure-exists: "&cTreasure '&6%s&c' already exists!"
-  usage-treasure-delete: "&eUsage: /treasure delete <name>"
-  treasure-deleted: "&aTreasure '&6%s&a' deleted!"
-  treasure-not-found: "&cTreasure '&6%s&c' not found!"
-  no-treasures: "&eNo treasures available!"
-  treasure-list: "&aAvailable treasures:"
-  usage-clue-error: "&eUsage: /clue <create|delete|list|solve> <treasure>"
-  invalid-clue-command: "&cInvalid subcommand! Use create, delete, list, or solve."
-  usage-clue-create: "&eUsage: /clue create <treasure> <description>"
-  clue-created: "&aClue created for treasure '&6%s&a'!"
-  clue-invalid: "&cTreasure '&6%s&c' not found or clue too far!"
-  usage-clue-delete-error: "&eUsage: /clue delete <treasure>"
-  clues-deleted: "&aClues deleted for treasure '&6%s&a'!"
-  usage-clue-list: "&eUsage: /clue list <treasure>"
-  no-clues: "&eNo clues available for '&6%s&e'!"
-  clue-list: "&aClues for '&6%s&a':"
-  usage-clue-solve: "&eUsage: /clue solve <treasure> <description>"
-  clue-solved: "&aClue solved for treasure '&6%s&a'!"
-  clue-not-found: "&cTreasure or clue not found for '&6%s&c'!"
-  usage-team-error: "&eUsage: /team <create|invite|kick|list>"
-  invalid-team-command: "&cInvalid subcommand! Use create, invite, kick, or list."
-  usage-team-create: "&eUsage: /team create <name>"
-  team-created: "&aTeam '&2%s&a' created!"
-  team-exists: "&cTeam '&2%s&c' already exists!"
-  usage-team-invite: "&eUsage: /team invite <player>"
-  player-not-found: "&cPlayer '&c%s&c' not found!"
-  team-invited: "&aInvited &c%s&a to your team!"
-  team-invite-received: "&aYou have been invited to a team!"
-  team-not-found: "&cYou are not in a team!"
-  team-invite-failed: "&cFailed to invite &c%s&c to your team!"
-  usage-team-kick: "&eUsage: /team kick <player>"
-  team-kicked: "&aKicked &c%s&a from your team!"
-  team-kick-received: "&cYou have been kicked from the team!"
-  team-kick-failed: "&cFailed to kick &c%s&c from your team!"
-  no-teams: "&eNo teams available!"
-  team-list: "&aTeams:"
-  usage-hunt-error: "&eUsage: /hunt <start|competition>"
-  invalid-hunt-command: "&cInvalid subcommand! Use start or competition."
-  hunt-started: "&aHunt started! Clue: "
-  all-treasures-found: "&eYou've found all treasures!"
-  usage-hunt-competition: "&eUsage: /hunt competition start"
-  competition-start: "&a&lTreasure hunt competition has started!"
-  competition-end: "&a&lCompetition ended! Winner: &2%s"
-  treasure-found: "&a&lTreasure '&6%s&a&l' found!"
-  clue-solved-location: "&aClue for treasure '&6%s&a' solved by reaching its location!"
-  not-enough-clues: "&cYou must solve at least %s clue(s) first!"
   plugin-enabled: "&aTreasureHunt plugin enabled!"
   plugin-disabled: "&cTreasureHunt plugin disabled!"
+  player-only: "&cThis command can only be used by players!"
+  no-permission: "&cYou do not have permission to use this command!"
+  error: "&cError: %s"
+
+  # Clue command messages
+  usage-clue-error: "&cUsage: /clue <create|delete|list|solve> <treasure> [description]"
+  usage-clue-create: "&cUsage: /clue create <treasure> <description>"
+  usage-clue-delete-error: "&cUsage: /clue delete <treasure>"
+  usage-clue-list: "&cUsage: /clue list <treasure>"
+  usage-clue-solve: "&cUsage: /clue solve <treasure> <description>"
+  clue-created: "&aClue created for treasure %s!"
+  clue-invalid: "&cInvalid treasure %s or clue creation failed!"
+  clues-deleted: "&aAll clues deleted for treasure %s!"
+  clue-list: "&aClues for treasure %s:"
+  no-clues: "&cNo clues found for treasure %s!"
+  clue-solved: "&aClue solved for treasure %s!"
+  clue-not-found: "&cClue not found for treasure %s!"
+  invalid-clue-command: "&cInvalid clue command!"
+  clue-solved-auto: "&aYou found a clue for treasure %s!"
+
+  # Hunt command messages
+  usage-hunt-error: "&cUsage: /hunt <start|competition|leaderboard|progress>"
+  usage-hunt-competition: "&cUsage: /hunt competition start"
+  invalid-hunt-command: "&cInvalid hunt command!"
+  hunt-started: "&aHunt started with %d treasures!"
+  no-treasures-available: "&cNo treasures available to hunt!"
+  competition-started: "&aTreasure hunt competition started!"
+  team-list: "&aTeam Leaderboard:"
+  no-teams: "&cNo teams found!"
+  progress-header: "&aYour Hunt Progress:"
+  cooldown-active: "&cPlease wait before starting another hunt!"
+
+  # Team command messages
+  usage-team-error: "&cUsage: /team <create|invite|kick|list>"
+  usage-team-create: "&cUsage: /team create <name>"
+  usage-team-invite: "&cUsage: /team invite <player>"
+  usage-team-kick: "&cUsage: /team kick <player>"
+  invalid-team-command: "&cInvalid team command!"
+  team-created: "&aTeam %s created!"
+  team-exists: "&cTeam %s already exists!"
+  team-not-found: "&cYou are not in a team!"
+  team-invited: "&aInvited %s to your team!"
+  team-invite-received: "&aYou have been invited to a team!"
+  team-invite-failed: "&cFailed to invite %s to the team!"
+  team-kicked: "&aKicked %s from your team!"
+  team-kick-received: "&cYou have been kicked from the team!"
+  team-kick-failed: "&cFailed to kick %s from the team!"
+  player-not-found: "&cPlayer %s not found!"
+
+  # Treasure command messages
+  usage-treasure-error: "&cUsage: /treasure <create|delete|list>"
+  usage-treasure-create: "&cUsage: /treasure create <name> <rarity>"
+  usage-treasure-delete: "&cUsage: /treasure delete <name>"
+  invalid-treasure-command: "&cInvalid treasure command!"
+  treasure-created: "&aTreasure %s created with rarity %r!"
+  treasure-exists: "&cTreasure %s already exists!"
+  treasure-deleted: "&aTreasure %s deleted!"
+  treasure-not-found: "&cTreasure %s not found!"
+  treasure-list: "&aAvailable Treasures:"
+  no-treasures: "&cNo treasures found!"
+  invalid-rarity: "&cRarity must be a positive integer!"
+  invalid-rarity-format: "&cRarity must be a valid number!"
+
+  # Listener messages
+  treasure-found: "&aYou found treasure %s!"
+  no-clue-solved: "&cYou need to solve at least %d clue(s) first!"
+  reward-received: "&aReceived reward: %s!"
+  protected-region: "&cThis area is protected and cannot be interacted with!"

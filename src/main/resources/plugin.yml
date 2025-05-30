@@ -1,46 +1,43 @@
 name: TreasureHunt
-version: '1.0'
+version: 1.0.0
 main: gg.kite.TreasureHunt
-api-version: '1.21'
-authors: [KiteGG]
-dependencies:
-  - name: mongodb-driver-sync
-    version: 5.3.0
+api-version: 1.21
+description: A Minecraft plugin for treasure hunting with clues, teams, and competitions.
+author: KiteGG
+depend: []
+softdepend: [WorldGuard]
+
 commands:
   treasure:
-    description: Manage treasures
-    usage: /<command> <create|delete|list> [name] [rarity]
+    description: Manage treasures in the TreasureHunt plugin.
+    usage: /<command> <create|delete|list> [args]
     permission: treasurehunt.treasure
   clue:
-    description: Manage clues for treasures
+    description: Manage clues for treasures.
     usage: /<command> <create|delete|list|solve> <treasure> [description]
     permission: treasurehunt.clue
   team:
-    description: Manage teams
-    usage: /<command> <create|invite|kick|list> [name|player]
+    description: Manage teams for treasure hunts.
+    usage: /<command> <create|invite|kick|list> [args]
     permission: treasurehunt.team
   hunt:
-    description: Start a treasure hunt or competition
-    usage: /<command> <start|competition> [start]
+    description: Start or manage treasure hunts and competitions.
+    usage: /<command> <start|competition|leaderboard|progress> [args]
     permission: treasurehunt.hunt
+
 permissions:
   treasurehunt.treasure:
-    description: Allows managing treasures
+    description: Allows managing treasures.
     default: op
   treasurehunt.clue:
-    description: Allows managing clues
-    default: true
+    description: Allows managing clues.
+    default: op
   treasurehunt.team:
-    description: Allows managing teams
+    description: Allows managing teams.
     default: true
   treasurehunt.hunt:
-    description: Allows starting hunts and competitions
+    description: Allows starting hunts and viewing progress.
     default: true
-  treasurehunt.*:
-    description: Grants all TreasureHunt permissions
+  treasurehunt.admin:
+    description: Allows starting competitions and advanced administration.
     default: op
-    children:
-      treasurehunt.treasure: true
-      treasurehunt.clue: true
-      treasurehunt.team: true
-      treasurehunt.hunt: true

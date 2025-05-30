@@ -1,5 +1,6 @@
 package gg.kite.managers;
 
+import com.google.inject.Inject;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -9,14 +10,13 @@ import gg.kite.TreasureHunt;
 import org.bson.Document;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Manages MongoDB database operations for the Treasure Hunt plugin.
+ * Manages MongoDB database operations for the TreasureHunt plugin.
  */
 public class DatabaseManager {
     private final MongoCollection<Document> treasuresCollection;
@@ -24,14 +24,17 @@ public class DatabaseManager {
     private final MongoCollection<Document> playerProgressCollection;
     private final MongoCollection<Document> clueProgressCollection;
     private final MongoCollection<Document> teamsCollection;
+    private final TreasureHunt plugin;
 
     /**
-     * Constructs a DatabaseManager with MongoDB client.
+     * Constructs a DatabaseManager with the specified MongoDB client and plugin.
      *
      * @param plugin The plugin instance.
-     * @param mongoClient The MongoDB client.
+     * @param mongoClient The MongoDB client for database operations.
      */
+    @Inject
     public DatabaseManager(@NotNull TreasureHunt plugin, @NotNull MongoClient mongoClient) {
+        this.plugin = plugin;
         MongoDatabase database = mongoClient.getDatabase("treasurehunt");
         treasuresCollection = database.getCollection("treasures");
         cluesCollection = database.getCollection("clues");
@@ -43,7 +46,7 @@ public class DatabaseManager {
     }
 
     /**
-     * Creates indexes for efficient queries.
+     * Creates indexes for efficient database queries.
      */
     private void createIndexes() {
         treasuresCollection.createIndex(Indexes.ascending("name"));
@@ -70,11 +73,11 @@ public class DatabaseManager {
     }
 
     /**
-     * Deletes a treasure and related data.
+     * Deletes a treasure and its associated data from the database.
      *
-     * @param name The treasure name.
+     * @param name The name of the treasure to delete.
      */
-    public void deleteTreasure(String name) {
+    public void deleteTreasure(@NotNull String name) {
         treasuresCollection.deleteOne(Filters.eq("name", name));
         cluesCollection.deleteMany(Filters.eq("treasure_name", name));
         playerProgressCollection.deleteMany(Filters.eq("treasure_name", name));
@@ -84,7 +87,7 @@ public class DatabaseManager {
     /**
      * Loads all treasures from the database.
      *
-     * @return List of treasures.
+     * @return A list of loaded treasures.
      */
     public List<Treasure> loadTreasures() {
         var treasures = new ArrayList<Treasure>();
@@ -92,7 +95,10 @@ public class DatabaseManager {
             String name = doc.getString("name");
             String worldName = doc.getString("world");
             World world = org.bukkit.Bukkit.getWorld(worldName);
-            if (world == null) continue;
+            if (world == null) {
+                plugin.getLogger().warning("World not found for treasure: " + name);
+                continue;
+            }
             var location = new Location(world, doc.getDouble("x"), doc.getDouble("y"), doc.getDouble("z"));
             int rarity = doc.getInteger("rarity", 1);
             treasures.add(new Treasure(name, location, rarity));
@@ -102,16 +108,19 @@ public class DatabaseManager {
     }
 
     /**
-     * Loads clues for a treasure.
+     * Loads clues for a specific treasure from the database.
      *
-     * @param treasure The treasure.
+     * @param treasure The treasure to load clues for.
      */
     private void loadClues(@NotNull Treasure treasure) {
         for (var doc : cluesCollection.find(Filters.eq("treasure_name", treasure.getName()))) {
             String description = doc.getString("description");
             String worldName = doc.getString("world");
             World world = org.bukkit.Bukkit.getWorld(worldName);
-            if (world == null) continue;
+            if (world == null) {
+                plugin.getLogger().warning("World not found for clue in treasure: " + treasure.getName());
+                continue;
+            }
             var location = new Location(world, doc.getDouble("x"), doc.getDouble("y"), doc.getDouble("z"));
             String difficulty = doc.getString("difficulty");
             treasure.addClue(new Clue(description, location, difficulty));
@@ -121,17 +130,18 @@ public class DatabaseManager {
     /**
      * Saves a clue to the database.
      *
-     * @param treasureName The treasure name.
+     * @param treasureName The name of the associated treasure.
      * @param clue The clue to save.
      */
-    public void saveClue(String treasureName, @NotNull Clue clue) {
+    public void saveClue(@NotNull String treasureName, @NotNull Clue clue) {
         var doc = new Document("treasure_name", treasureName)
                 .append("description", clue.description())
                 .append("world", clue.location().getWorld().getName())
                 .append("x", clue.location().getX())
                 .append("y", clue.location().getY())
                 .append("z", clue.location().getZ())
-                .append("difficulty", clue.difficulty());
+                .append("difficulty", clue.difficulty())
+                .append("created_at", clue.createdAt());
         cluesCollection.replaceOne(
                 Filters.and(Filters.eq("treasure_name", treasureName), Filters.eq("description", clue.description())),
                 doc,
@@ -140,21 +150,21 @@ public class DatabaseManager {
     }
 
     /**
-     * Deletes all clues for a treasure.
+     * Deletes all clues for a specified treasure.
      *
-     * @param treasureName The treasure name.
+     * @param treasureName The name of the treasure.
      */
-    public void deleteClues(String treasureName) {
+    public void deleteClues(@NotNull String treasureName) {
         cluesCollection.deleteMany(Filters.eq("treasure_name", treasureName));
     }
 
     /**
-     * Saves player progress for a found treasure.
+     * Saves a player's progress for a found treasure.
      *
-     * @param playerId The player's UUID.
-     * @param treasureName The treasure name.
+     * @param playerId The UUID of the player.
+     * @param treasureName The name of the treasure.
      */
-    public void savePlayerProgress(@NotNull UUID playerId, String treasureName) {
+    public void savePlayerProgress(@NotNull UUID playerId, @NotNull String treasureName) {
         var doc = new Document("player_uuid", playerId.toString())
                 .append("treasure_name", treasureName);
         playerProgressCollection.replaceOne(
@@ -165,13 +175,13 @@ public class DatabaseManager {
     }
 
     /**
-     * Saves clue progress for a player.
+     * Saves a player's clue progress.
      *
-     * @param playerId The player's UUID.
-     * @param treasureName The treasure name.
-     * @param clueDescription The clue description.
+     * @param playerId The UUID of the player.
+     * @param treasureName The name of the treasure.
+     * @param clueDescription The description of the clue.
      */
-    public void saveClueProgress(@NotNull UUID playerId, String treasureName, String clueDescription) {
+    public void saveClueProgress(@NotNull UUID playerId, @NotNull String treasureName, @NotNull String clueDescription) {
         var doc = new Document("player_uuid", playerId.toString())
                 .append("treasure_name", treasureName)
                 .append("clue_description", clueDescription);
@@ -202,22 +212,22 @@ public class DatabaseManager {
     /**
      * Deletes a team from the database.
      *
-     * @param name The team name.
+     * @param name The name of the team to delete.
      */
-    public void deleteTeam(String name) {
+    public void deleteTeam(@NotNull String name) {
         teamsCollection.deleteOne(Filters.eq("name", name));
     }
 
     /**
      * Loads all teams from the database.
      *
-     * @return List of teams.
+     * @return A list of loaded teams.
      */
     public List<Team> loadTeams() {
         var teams = new ArrayList<Team>();
         for (var doc : teamsCollection.find()) {
             String name = doc.getString("name");
-            List<String> memberStrings = doc.getList("members", String.class);
+            List<String> memberStrings = doc.getList("members", String.class, List.of());
             Set<UUID> members = memberStrings.stream()
                     .map(UUID::fromString)
                     .collect(Collectors.toSet());
