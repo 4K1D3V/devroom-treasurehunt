@@ -42,7 +42,7 @@ public class TreasureListener implements Listener {
         for (var treasure : treasureManager.getTreasures()) {
             if (isWithinFindRadius(treasure.getLocation(), clickedLocation)) {
                 if (treasureManager.markTreasureFound(player, treasure.getName())) {
-                    event.setCancelled(true); // Prevent block interaction
+                    event.setCancelled(false);
                 } else {
                     player.sendMessage(messageConfig.getMessage("no-clue-solved", "%d", String.valueOf(treasureManager.getMinCluesRequired())));
                 }

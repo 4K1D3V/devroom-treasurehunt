@@ -5,15 +5,15 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Indexes;
+import gg.kite.TreasureHunt;
 import org.bson.Document;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.logging.Level;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Manages MongoDB database operations for the Treasure Hunt plugin.
@@ -23,6 +23,7 @@ public class DatabaseManager {
     private final MongoCollection<Document> cluesCollection;
     private final MongoCollection<Document> playerProgressCollection;
     private final MongoCollection<Document> clueProgressCollection;
+    private final MongoCollection<Document> teamsCollection;
 
     /**
      * Constructs a DatabaseManager with MongoDB client.
@@ -30,12 +31,13 @@ public class DatabaseManager {
      * @param plugin The plugin instance.
      * @param mongoClient The MongoDB client.
      */
-    public DatabaseManager(JavaPlugin plugin, MongoClient mongoClient) {
+    public DatabaseManager(@NotNull TreasureHunt plugin, @NotNull MongoClient mongoClient) {
         MongoDatabase database = mongoClient.getDatabase("treasurehunt");
         treasuresCollection = database.getCollection("treasures");
         cluesCollection = database.getCollection("clues");
         playerProgressCollection = database.getCollection("player_progress");
         clueProgressCollection = database.getCollection("clue_progress");
+        teamsCollection = database.getCollection("teams");
         createIndexes();
         plugin.getLogger().info("MongoDB collections initialized with indexes.");
     }
@@ -48,6 +50,7 @@ public class DatabaseManager {
         cluesCollection.createIndex(Indexes.ascending("treasure_name", "description"));
         playerProgressCollection.createIndex(Indexes.ascending("player_uuid", "treasure_name"));
         clueProgressCollection.createIndex(Indexes.ascending("player_uuid", "treasure_name", "clue_description"));
+        teamsCollection.createIndex(Indexes.ascending("name"));
     }
 
     /**
@@ -55,7 +58,7 @@ public class DatabaseManager {
      *
      * @param treasure The treasure to save.
      */
-    public void saveTreasure(Treasure treasure) {
+    public void saveTreasure(@NotNull Treasure treasure) {
         var doc = new Document("name", treasure.getName())
                 .append("world", treasure.getLocation().getWorld().getName())
                 .append("x", treasure.getLocation().getX())
@@ -103,7 +106,7 @@ public class DatabaseManager {
      *
      * @param treasure The treasure.
      */
-    private void loadClues(Treasure treasure) {
+    private void loadClues(@NotNull Treasure treasure) {
         for (var doc : cluesCollection.find(Filters.eq("treasure_name", treasure.getName()))) {
             String description = doc.getString("description");
             String worldName = doc.getString("world");
@@ -121,16 +124,16 @@ public class DatabaseManager {
      * @param treasureName The treasure name.
      * @param clue The clue to save.
      */
-    public void saveClue(String treasureName, Clue clue) {
+    public void saveClue(String treasureName, @NotNull Clue clue) {
         var doc = new Document("treasure_name", treasureName)
-                .append("description", clue.getDescription())
-                .append("world", clue.getLocation().getWorld().getName())
-                .append("x", clue.getLocation().getX())
-                .append("y", clue.getLocation().getY())
-                .append("z", clue.getLocation().getZ())
-                .append("difficulty", clue.getDifficulty());
+                .append("description", clue.description())
+                .append("world", clue.location().getWorld().getName())
+                .append("x", clue.location().getX())
+                .append("y", clue.location().getY())
+                .append("z", clue.location().getZ())
+                .append("difficulty", clue.difficulty());
         cluesCollection.replaceOne(
-                Filters.and(Filters.eq("treasure_name", treasureName), Filters.eq("description", clue.getDescription())),
+                Filters.and(Filters.eq("treasure_name", treasureName), Filters.eq("description", clue.description())),
                 doc,
                 new com.mongodb.client.model.ReplaceOptions().upsert(true)
         );
@@ -151,7 +154,7 @@ public class DatabaseManager {
      * @param playerId The player's UUID.
      * @param treasureName The treasure name.
      */
-    public void savePlayerProgress(UUID playerId, String treasureName) {
+    public void savePlayerProgress(@NotNull UUID playerId, String treasureName) {
         var doc = new Document("player_uuid", playerId.toString())
                 .append("treasure_name", treasureName);
         playerProgressCollection.replaceOne(
@@ -168,7 +171,7 @@ public class DatabaseManager {
      * @param treasureName The treasure name.
      * @param clueDescription The clue description.
      */
-    public void saveClueProgress(UUID playerId, String treasureName, String clueDescription) {
+    public void saveClueProgress(@NotNull UUID playerId, String treasureName, String clueDescription) {
         var doc = new Document("player_uuid", playerId.toString())
                 .append("treasure_name", treasureName)
                 .append("clue_description", clueDescription);
@@ -181,5 +184,49 @@ public class DatabaseManager {
                 doc,
                 new com.mongodb.client.model.ReplaceOptions().upsert(true)
         );
+    }
+
+    /**
+     * Saves a team to the database.
+     *
+     * @param team The team to save.
+     */
+    public void saveTeam(@NotNull Team team) {
+        var doc = new Document("name", team.getName())
+                .append("members", team.getMembers().stream().map(UUID::toString).toList())
+                .append("score", team.getScore());
+        teamsCollection.replaceOne(Filters.eq("name", team.getName()), doc,
+                new com.mongodb.client.model.ReplaceOptions().upsert(true));
+    }
+
+    /**
+     * Deletes a team from the database.
+     *
+     * @param name The team name.
+     */
+    public void deleteTeam(String name) {
+        teamsCollection.deleteOne(Filters.eq("name", name));
+    }
+
+    /**
+     * Loads all teams from the database.
+     *
+     * @return List of teams.
+     */
+    public List<Team> loadTeams() {
+        var teams = new ArrayList<Team>();
+        for (var doc : teamsCollection.find()) {
+            String name = doc.getString("name");
+            List<String> memberStrings = doc.getList("members", String.class);
+            Set<UUID> members = memberStrings.stream()
+                    .map(UUID::fromString)
+                    .collect(Collectors.toSet());
+            int score = doc.getInteger("score", 0);
+            Team team = new Team(name, members.stream().findFirst().orElse(null));
+            members.forEach(team::addMember);
+            for (int i = 0; i < score; i++) team.incrementScore();
+            teams.add(team);
+        }
+        return teams;
     }
 }

@@ -3,7 +3,9 @@ package gg.kite.managers;
 import org.bukkit.Location;
 
 import java.util.ArrayList;
-import java.util.List; /**
+import java.util.List;
+
+/**
  * Represents a treasure with a location and rarity.
  */
 public class Treasure {

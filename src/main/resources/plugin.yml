@@ -3,3 +3,44 @@ version: '1.0'
 main: gg.kite.TreasureHunt
 api-version: '1.21'
 authors: [KiteGG]
+dependencies:
+  - name: mongodb-driver-sync
+    version: 5.3.0
+commands:
+  treasure:
+    description: Manage treasures
+    usage: /<command> <create|delete|list> [name] [rarity]
+    permission: treasurehunt.treasure
+  clue:
+    description: Manage clues for treasures
+    usage: /<command> <create|delete|list|solve> <treasure> [description]
+    permission: treasurehunt.clue
+  team:
+    description: Manage teams
+    usage: /<command> <create|invite|kick|list> [name|player]
+    permission: treasurehunt.team
+  hunt:
+    description: Start a treasure hunt or competition
+    usage: /<command> <start|competition> [start]
+    permission: treasurehunt.hunt
+permissions:
+  treasurehunt.treasure:
+    description: Allows managing treasures
+    default: op
+  treasurehunt.clue:
+    description: Allows managing clues
+    default: true
+  treasurehunt.team:
+    description: Allows managing teams
+    default: true
+  treasurehunt.hunt:
+    description: Allows starting hunts and competitions
+    default: true
+  treasurehunt.*:
+    description: Grants all TreasureHunt permissions
+    default: op
+    children:
+      treasurehunt.treasure: true
+      treasurehunt.clue: true
+      treasurehunt.team: true
+      treasurehunt.hunt: true

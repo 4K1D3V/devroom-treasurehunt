@@ -1,18 +1,24 @@
 package gg.kite.commands;
 
 import gg.kite.config.MessageConfig;
+import gg.kite.managers.Treasure;
 import gg.kite.managers.TreasureManager;
+import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
- * Handles treasure-related commands.
+ * Handles treasure-related commands with tab completion.
  */
-public class TreasureCommand implements CommandExecutor {
+public class TreasureCommand implements CommandExecutor, TabCompleter {
     private final TreasureManager treasureManager;
     private final MessageConfig messageConfig;
 
@@ -22,12 +28,17 @@ public class TreasureCommand implements CommandExecutor {
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String @NotNull [] args) {
         if (!(sender instanceof Player player)) {
             sender.sendMessage(messageConfig.getMessage("player-only"));
             return true;
         }
+        if (!player.hasPermission("treasurehunt.treasure")) {
+            player.sendMessage(messageConfig.getMessage("no-permission"));
+            return true;
+        }
         if (args.length == 0) {
+            player.sendMessage(messageConfig.getMessage("usage-treasure-error"));
             return false;
         }
 
@@ -36,7 +47,10 @@ public class TreasureCommand implements CommandExecutor {
                 case "create" -> createTreasure(player, args);
                 case "delete" -> deleteTreasure(player, args);
                 case "list" -> listTreasures(player);
-                default -> { return false; }
+                default -> {
+                    player.sendMessage(messageConfig.getMessage("invalid-treasure-command"));
+                    return false;
+                }
             }
         } catch (Exception e) {
             player.sendMessage(messageConfig.getMessage("error", "%s", e.getMessage()));
@@ -79,9 +93,35 @@ public class TreasureCommand implements CommandExecutor {
         if (treasures.isEmpty()) {
             player.sendMessage(messageConfig.getMessage("no-treasures"));
         } else {
-            player.sendMessage(messageConfig.getMessage("treasure-list") + treasures.stream()
-                    .map(t -> t.getName() + " (Rarity: " + t.getRarity() + ")")
-                    .collect(Collectors.joining(", ")));
+            player.sendMessage(messageConfig.getMessage("treasure-list"));
+            for (var t : treasures) {
+                Location loc = t.getLocation();
+                int clueCount = t.getClues().size();
+                player.sendMessage(String.format("%s (Rarity: %d, Clues: %d, Location: %.1f, %.1f, %.1f)",
+                        t.getName(), t.getRarity(), clueCount, loc.getX(), loc.getY(), loc.getZ()));
+            }
         }
+    }
+
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String @NotNull [] args) {
+        List<String> completions = new ArrayList<>();
+
+        if (args.length == 1) {
+            completions.addAll(Arrays.asList("create", "delete", "list"));
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("delete")) {
+            completions.addAll(treasureManager.getTreasures().stream()
+                    .map(Treasure::getName)
+                    .toList());
+        }
+
+        if (args.length > 0) {
+            String lastArg = args[args.length - 1].toLowerCase();
+            completions = completions.stream()
+                    .filter(s -> s.toLowerCase().startsWith(lastArg))
+                    .toList();
+        }
+
+        return completions;
     }
 }

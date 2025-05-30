@@ -2,7 +2,9 @@ package gg.kite.managers;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID; /**
+import java.util.UUID;
+
+/**
  * Represents a team with members and a score.
  */
 public class Team {
@@ -13,7 +15,9 @@ public class Team {
     public Team(String name, UUID leader) {
         this.name = name;
         this.members = new HashSet<>();
-        this.members.add(leader);
+        if (leader != null) {
+            this.members.add(leader);
+        }
         this.score = 0;
     }
 

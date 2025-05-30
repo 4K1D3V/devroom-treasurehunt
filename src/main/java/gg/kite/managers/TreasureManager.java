@@ -49,7 +49,21 @@ public class TreasureManager {
         this.minCluesRequired = config.getInt("treasure.min-clues-required", 1);
         this.treasureFindRadius = config.getDouble("treasure.find-radius", 2.0);
         this.maxTreasuresPerHunt = config.getInt("treasure.max-treasures-per-hunt", 5);
+        // Validate config values
+        if (treasureFindRadius <= 0) {
+            throw new IllegalArgumentException("treasure.find-radius must be positive");
+        }
+        if (maxClueDistance <= 0) {
+            throw new IllegalArgumentException("treasure.max-clue-distance must be positive");
+        }
+        if (minCluesRequired < 0) {
+            throw new IllegalArgumentException("treasure.min-clues-required cannot be negative");
+        }
+        if (maxTreasuresPerHunt <= 0) {
+            throw new IllegalArgumentException("treasure.max-treasures-per-hunt must be positive");
+        }
         loadTreasures();
+        loadTeams();
     }
 
     /**
@@ -58,6 +72,14 @@ public class TreasureManager {
     private void loadTreasures() {
         treasures.putAll(databaseManager.loadTreasures().stream()
                 .collect(Collectors.toMap(Treasure::getName, t -> t)));
+    }
+
+    /**
+     * Loads teams from the database.
+     */
+    private void loadTeams() {
+        teams.putAll(databaseManager.loadTeams().stream()
+                .collect(Collectors.toMap(Team::getName, t -> t)));
     }
 
     /**
@@ -166,15 +188,19 @@ public class TreasureManager {
      * @param player The player.
      * @param treasureName The treasure name.
      * @param clueDescription The clue description.
-     * @return True if marked, false if invalid.
+     * @return True if the clue was newly solved, false if already solved or invalid.
      */
     public boolean markClueSolved(Player player, String treasureName, String clueDescription) {
         var treasure = treasures.get(treasureName);
-        if (treasure == null || treasure.getClues().stream().noneMatch(c -> c.getDescription().equals(clueDescription))) {
+        if (treasure == null || treasure.getClues().stream().noneMatch(c -> c.description().equals(clueDescription))) {
             return false;
         }
-        clueProgress.computeIfAbsent(player.getUniqueId(), k -> new HashSet<>())
-                .add(treasureName + ":" + clueDescription);
+        String clueId = treasureName + ":" + clueDescription;
+        Set<String> playerClues = clueProgress.computeIfAbsent(player.getUniqueId(), k -> new HashSet<>());
+        if (playerClues.contains(clueId)) {
+            return false; // Clue already solved
+        }
+        playerClues.add(clueId);
         databaseManager.saveClueProgress(player.getUniqueId(), treasureName, clueDescription);
         return true;
     }
@@ -190,7 +216,9 @@ public class TreasureManager {
         if (teams.containsKey(name)) {
             return false;
         }
-        teams.put(name, new Team(name, leader.getUniqueId()));
+        var team = new Team(name, leader.getUniqueId());
+        teams.put(name, team);
+        databaseManager.saveTeam(team);
         return true;
     }
 
@@ -199,14 +227,19 @@ public class TreasureManager {
      *
      * @param teamName The team name.
      * @param invited The invited player.
-     * @return True if invited, false if team not found.
+     * @return True if invited, false if team not found or player in another team.
      */
     public boolean invitePlayer(String teamName, Player invited) {
         var team = teams.get(teamName);
         if (team == null) {
             return false;
         }
+        // Check if player already in another team
+        if (getPlayerTeam(invited.getUniqueId()) != null) {
+            return false;
+        }
         team.addMember(invited.getUniqueId());
+        databaseManager.saveTeam(team);
         return true;
     }
 
@@ -223,6 +256,11 @@ public class TreasureManager {
             return false;
         }
         team.removeMember(kicked.getUniqueId());
+        databaseManager.saveTeam(team);
+        if (team.getMembers().isEmpty()) {
+            teams.remove(teamName);
+            databaseManager.deleteTeam(teamName);
+        }
         return true;
     }
 
@@ -246,7 +284,7 @@ public class TreasureManager {
             return;
         }
         var availableTreasures = getAvailableTreasures(player.getUniqueId());
-        if (availableTreasures.isEmpty() || availableTreasures.size() > maxTreasuresPerHunt) {
+        if (availableTreasures.isEmpty()) {
             player.sendMessage(messageConfig.getMessage("all-treasures-found"));
             return;
         }
@@ -257,7 +295,7 @@ public class TreasureManager {
             return;
         }
         var clue = clues.get(random.nextInt(clues.size()));
-        player.sendMessage(messageConfig.getMessage("hunt-started") + clue.getDescription());
+        player.sendMessage(messageConfig.getMessage("hunt-started") + clue.description());
     }
 
     /**
@@ -300,7 +338,7 @@ public class TreasureManager {
     private List<Clue> getDifficultyFilteredClues(Treasure treasure) {
         var clues = treasure.getClues();
         var filtered = clues.stream()
-                .filter(c -> c.getDifficulty().equalsIgnoreCase(clueDifficulty))
+                .filter(c -> c.difficulty().equalsIgnoreCase(clueDifficulty))
                 .toList();
         return filtered.isEmpty() ? clues : filtered;
     }
@@ -313,7 +351,10 @@ public class TreasureManager {
             return;
         }
         competitionActive = true;
-        teams.values().forEach(Team::resetScore);
+        teams.values().forEach(team -> {
+            team.resetScore();
+            databaseManager.saveTeam(team);
+        });
         broadcastToTeams(messageConfig.getMessage("competition-start"));
     }
 
@@ -362,6 +403,7 @@ public class TreasureManager {
         var team = getPlayerTeam(playerId);
         if (team != null) {
             team.incrementScore();
+            databaseManager.saveTeam(team);
             checkCompetitionStatus();
         }
     }
@@ -417,8 +459,12 @@ public class TreasureManager {
         return treasureFindRadius;
     }
 
+    /**
+     * Gets the minimum number of clues required to find a treasure.
+     *
+     * @return The minimum clues required.
+     */
     public int getMinCluesRequired() {
         return minCluesRequired;
     }
 }
-
